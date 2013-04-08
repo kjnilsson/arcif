@@ -42,7 +42,7 @@ module Helpers =
 module ArcifTests =
     [<Test>]
     let ``excercise the api`` () =
-        use redis = connect "localhost" 6379
+        use redis = Redis.connect "localhost" 6379
         async {
             redis.Select 2 >>= run >>.
             redis.FlushDb () >>= run >>.

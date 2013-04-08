@@ -102,6 +102,6 @@ module Connection =
         interface IDisposable with
             member this.Dispose() =
                 ()
-        
+module Redis =
     let connect (ip:string) (port:int32) =
-        new RedisAgent(ip, port)
+        new Connection.RedisAgent(ip, port)
