@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
-Project("{4925A630-B079-445d-BCD4-3A9C94FE9307}") = "Arcif.Tests", "Arcif.Tests\Arcif.Tests.fsproj", "{3B928DE3-4A28-4F11-B09D-8BC349C233FB}"
-EndProject
 Project("{4925A630-B079-445d-BCD4-3A9C94FE9307}") = "Arcif", "Arcif\Arcif.fsproj", "{8A828C3A-98A6-4E88-874B-ECFE43353E17}"
+EndProject
+Project("{4925A630-B079-445d-BCD4-3A9C94FE9307}") = "Arcif.Integration", "Arcif.Integration\Arcif.Integration.fsproj", "{FEF61853-8F73-4B9B-A3D0-3DFF5A0DA9A6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -11,14 +11,14 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{3B928DE3-4A28-4F11-B09D-8BC349C233FB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{3B928DE3-4A28-4F11-B09D-8BC349C233FB}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{3B928DE3-4A28-4F11-B09D-8BC349C233FB}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{3B928DE3-4A28-4F11-B09D-8BC349C233FB}.Release|Any CPU.Build.0 = Release|Any CPU
 		{8A828C3A-98A6-4E88-874B-ECFE43353E17}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{8A828C3A-98A6-4E88-874B-ECFE43353E17}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8A828C3A-98A6-4E88-874B-ECFE43353E17}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8A828C3A-98A6-4E88-874B-ECFE43353E17}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FEF61853-8F73-4B9B-A3D0-3DFF5A0DA9A6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FEF61853-8F73-4B9B-A3D0-3DFF5A0DA9A6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FEF61853-8F73-4B9B-A3D0-3DFF5A0DA9A6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FEF61853-8F73-4B9B-A3D0-3DFF5A0DA9A6}.Release|Any CPU.Build.0 = Release|Any CPU
 		{281B0954-19C9-43F6-A063-3D6AD68F8942}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{281B0954-19C9-43F6-A063-3D6AD68F8942}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{281B0954-19C9-43F6-A063-3D6AD68F8942}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -41,7 +41,7 @@ Global
 		{281B0954-19C9-43F6-A063-3D6AD68F8942}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(MonoDevelopProperties) = preSolution
-		StartupItem = Arcif.Tests\Arcif.Tests.fsproj
+		StartupItem = Arcif.Integration\Arcif.Integration.fsproj
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

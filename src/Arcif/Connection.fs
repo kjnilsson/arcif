@@ -1,4 +1,4 @@
-﻿namespace Arcif
+﻿namespace Arcif.Redis
 
 module Connection =
 
@@ -6,7 +6,7 @@ module Connection =
     open System.IO
     open System.Net.Sockets
     open Arcif
-    open Arcif.Protocol
+    open Arcif.Redis
 
     let toBytes (s:string) =
         System.Text.Encoding.UTF8.GetBytes s
@@ -14,6 +14,7 @@ module Connection =
     type AsyncReply = AsyncReplyChannel<Reply>
 
     type Command =
+        | Exit
         | Select of int * AsyncReply
         | Set of byte[] * byte[] * AsyncReply
         | Get of byte[] * AsyncReply
@@ -28,6 +29,7 @@ module Connection =
         | FlushDb of AsyncReply
         
         
+        
     type RedisAgent (ip:string, port) =
         let connect() =
             let sock = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
@@ -36,12 +38,12 @@ module Connection =
         
         let multi (items : byte[] list) =
             items
-            |> List.map Bulk
-            |> Multi
+            |> List.map BulkReq
+            |> MultiReq
 
         let keyCommand cmd key s =
-            Protocol.multiP (multi [cmd; key]) s 
-            Protocol.redisU s
+            Parser.redisP (multi [cmd; key]) s 
+            Parser.redisU s
 
         let agent = MailboxProcessor.Start(fun inbox ->
             let rec loop s = async {
@@ -51,57 +53,82 @@ module Connection =
                         let db = db.ToString() |> toBytes
                         return rc.Reply (keyCommand "SELECT"B db s)
                     | Set (key, v, rc) ->
-                        Protocol.multiP (multi ["SET"B; key; v]) s 
-                        return rc.Reply (Protocol.redisU s)
+                        Parser.redisP (multi ["SET"B; key; v]) s 
+                        return rc.Reply (Parser.redisU s)
                     | Get (key, rc) ->
                         return rc.Reply (keyCommand "GET"B key s)
                     | MGet (keys, rc) ->
-                        Protocol.multiP (multi ("MGET"B :: keys)) s 
-                        return rc.Reply (Protocol.redisU s)
+                        Parser.redisP (multi ("MGET"B :: keys)) s 
+                        return rc.Reply (Parser.redisU s)
                     | LPush (key, vals, rc) ->
-                        Protocol.multiP (multi ("LPUSH"B :: key :: vals)) s 
-                        return rc.Reply (Protocol.redisU s)
+                        Parser.redisP (multi ("LPUSH"B :: key :: vals)) s 
+                        return rc.Reply (Parser.redisU s)
                     | LPop (key, rc) ->
                         return rc.Reply (keyCommand "LPOP"B key s)       
                     | RPopLPush (keyfrom, keyto, rc) ->
-                        Protocol.multiP (multi ["RPOPLPUSH"B; keyfrom; keyto]) s 
-                        return rc.Reply (Protocol.redisU s)         
+                        Parser.redisP (multi ["RPOPLPUSH"B; keyfrom; keyto]) s 
+                        return rc.Reply (Parser.redisU s)         
                     | LLen (key, rc) ->
                         return rc.Reply (keyCommand "LLEN"B key s)
                     | Eval (script, keys, args, rc) ->
                         let numKeys = keys.Length.ToString() |> toBytes
-                        Protocol.multiP (multi ("EVAL"B :: script :: numKeys :: (List.concat [keys; args]))) s 
-                        return rc.Reply (Protocol.redisU s)
+                        Parser.redisP (multi ("EVAL"B :: script :: numKeys :: (List.concat [keys; args]))) s 
+                        return rc.Reply (Parser.redisU s)
                     | MultiBlock rc -> 
-                        Protocol.multiP (multi ["MULTI"B]) s
-                        return rc.Reply (Protocol.redisU s)
+                        Parser.redisP (multi ["MULTI"B]) s
+                        return rc.Reply (Parser.redisU s)
                     | Exec rc -> 
-                        Protocol.multiP (multi ["EXEC"B]) s
-                        return rc.Reply (Protocol.redisU s)
+                        Parser.redisP (multi ["EXEC"B]) s
+                        return rc.Reply (Parser.redisU s)
                     | FlushDb rc -> 
-                        Protocol.multiP (multi ["FLUSHDB"B]) s
-                        return rc.Reply (Protocol.redisU s)
+                        Parser.redisP (multi ["FLUSHDB"B]) s
+                        return rc.Reply (Parser.redisU s)
+                        
+                    | Exit -> s.Dispose()
                     | _ -> failwith "unimplemented redis msg type"
                 return! loop s    }
             loop (connect()))
-
-        member this.Select db = agent.PostAndAsyncReply(fun rc -> Select(db, rc))
-        member this.Set k v = agent.PostAndAsyncReply(fun rc -> Set(k, v, rc))
-        member this.Get k = agent.PostAndAsyncReply(fun rc -> Get(k, rc))
-        member this.MGet keys = agent.PostAndAsyncReply(fun rc -> MGet(keys, rc))
-        member this.LPush key vals = agent.PostAndAsyncReply(fun rc -> LPush(key, vals, rc))
-        member this.LPop key = agent.PostAndAsyncReply(fun rc -> LPop(key, rc))
-        member this.LLen key = agent.PostAndAsyncReply(fun rc -> LLen(key, rc))
-        member this.Eval script keys args = agent.PostAndAsyncReply(fun rc -> Eval(script |> toBytes, keys, args, rc))
-        member this.RPopLPush keyfrom keyto = agent.PostAndAsyncReply(fun rc -> RPopLPush(keyfrom, keyto, rc))
-        member this.Multi () = agent.PostAndAsyncReply(fun rc -> MultiBlock rc)
-        member this.Exec () = agent.PostAndAsyncReply(fun rc -> Exec rc)
-        member this.FlushDb () = agent.PostAndAsyncReply(fun rc -> FlushDb rc)
-
+            
+        member this.PostAndAsyncReply f = agent.PostAndAsyncReply f
 
         interface IDisposable with
             member this.Dispose() =
+                agent.Post Exit
                 ()
+  
+module Server =
+    open Connection
+    type RedisAgent with
+        member this.FlushDb () = this.PostAndAsyncReply(fun rc -> FlushDb rc)          
+        
+module Transactions =
+    open Connection
+    type RedisAgent with
+        member this.Multi () = this.PostAndAsyncReply(fun rc -> MultiBlock rc)
+        member this.Exec () = this.PostAndAsyncReply(fun rc -> Exec rc)
+                
+module Scripting =
+    open Connection
+    type RedisAgent with
+        member this.Eval script keys args = this.PostAndAsyncReply(fun rc -> Eval(script |> toBytes, keys, args, rc))
+                      
+module Lists =
+    open Connection
+    type RedisAgent with
+        member this.LPush key vals = this.PostAndAsyncReply(fun rc -> LPush(key, vals, rc))
+        member this.LPop key = this.PostAndAsyncReply(fun rc -> LPop(key, rc))
+        member this.LLen key = this.PostAndAsyncReply(fun rc -> LLen(key, rc))
+        member this.RPopLPush keyfrom keyto = this.PostAndAsyncReply(fun rc -> RPopLPush(keyfrom, keyto, rc))
+        
+        
+module Strings =
+    open Connection
+    type RedisAgent with
+        member this.Select db = this.PostAndAsyncReply(fun rc -> Select(db, rc))
+        member this.Set k v = this.PostAndAsyncReply(fun rc -> Set(k, v, rc))
+        member this.Get k = this.PostAndAsyncReply(fun rc -> Get(k, rc))
+        member this.MGet keys = this.PostAndAsyncReply(fun rc -> MGet(keys, rc))
+    
 module Redis =
     let connect (ip:string) (port:int32) =
         new Connection.RedisAgent(ip, port)
