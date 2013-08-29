@@ -11,8 +11,12 @@ module Parser =
     type Unpickler<'T> = InState -> 'T
 
     let CRLF = "\r\n"B
+    
+    let str x = x.ToString()
 
     let utf8String = System.Text.Encoding.UTF8.GetString
+    
+    let private getBytes (s:string)= System.Text.Encoding.UTF8.GetBytes s
 
     let private byteP (b:byte) (st:OutState) = st.WriteByte b
     let private byteU (st:InState) = byte(st.ReadByte())
@@ -33,17 +37,16 @@ module Parser =
         let s = statusU st
         System.Int64.Parse s
 
-    let private getBytes (s:string)= System.Text.Encoding.UTF8.GetBytes s
 
     let readBytes (st:Stream) n = 
-        async {
-            return! st.AsyncRead n
-        } |> Async.RunSynchronously
+        let buffer = Array.create<byte> n 0uy
+        st.Read (buffer, 0, n)
+        buffer
 
     let private integerP i (st:OutState) =
-        let is = i.ToString() |> getBytes
-        st.Write(is, 0, is.Length)
-        st.Write(CRLF, 0, CRLF.Length)
+        let is = str i |> getBytes
+        st.Write (is, 0, is.Length)
+        st.Write (CRLF, 0, CRLF.Length)
 
     let private crlfP (st:OutState) =
         st.Write(CRLF, 0, CRLF.Length)
@@ -58,22 +61,22 @@ module Parser =
             Some result
 
     let private elementP (data:BulkReq) (st:OutState) =
-        match data with
-        | BulkReq d -> 
-            let els = d.Length.ToString() |> getBytes 
-            st.WriteByte ('$'B)
-            st.Write (els, 0, els.Length)
-            crlfP st
-            st.Write (d, 0, d.Length)
-            crlfP st
+        let (BulkReq d) = data
+        let els = str d |> getBytes 
+        st.WriteByte ('$'B)
+        st.Write (els, 0, els.Length)
+        crlfP st
+        st.Write (d, 0, d.Length)
+        crlfP st
 
     let private multiU (st:InState) elU =
         let num = integerU st |> int32
-        if (num = -1) then None
+        if (num = -1) then 
+            None
         else
-            let m = [0 .. num-1] |>
-                    List.map (fun _ -> elU st)
-            Some m
+            [0 .. num - 1]
+            |> List.map (fun _ -> elU st)
+            |> Some
 
     let rec private elementU (st:InState) =
         match byteU st with
@@ -85,18 +88,14 @@ module Parser =
         | x -> failwith (sprintf "%c is an invalid Redis element type" (char x))
 
     let private multiP (m:MultiReq) (st:OutState) =
-        match m with
-        | MultiReq bulkList -> 
-            let count = bulkList.Length |> int64
-            byteP '*'B st
-            integerP count st
-            for bulk in bulkList do
-                elementP bulk st
+        let (MultiReq (bulkList)) = m
+        let count = bulkList.Length |> int64
+        byteP '*'B st
+        integerP count st
+        for bulk in bulkList do
+            elementP bulk st
             
     let redisP = multiP
 
     let redisU (st:InState) =
         elementU st
-
-
-
