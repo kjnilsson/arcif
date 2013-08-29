@@ -16,11 +16,13 @@ let asBytes (s:string) =
     System.Text.Encoding.UTF8.GetBytes s
 
 let check test target value =
-    let result = value
-                |> Async.RunSynchronously
-                |> function
-                   | Status x' -> x' |> asBytes = target
-                   | Reply.Bulk (Some x') ->  x' = target
+    let result = 
+        value
+        |> Async.RunSynchronously
+        |> function
+            | Status x' -> x' |> asBytes = target
+            | Reply.Bulk (Some x') ->  x' = target
+
     if result then
         printfn  "test: %s is OK" test
     else

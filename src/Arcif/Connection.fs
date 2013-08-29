@@ -16,15 +16,11 @@ module Connection =
         | Command of (Parser.OutState -> unit) * AsyncReplyChannel<Reply>
         
     type RedisAgent (ip:string, port) =
+
         let connect() =
             let sock = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
             sock.Connect(ip, port)
             new BufferedStream(new NetworkStream (sock))
-        
-        let multi (items : byte[] list) =
-            items
-            |> List.map BulkReq
-            |> MultiReq
 
         let agent = MailboxProcessor.Start(fun inbox ->
             let rec loop s = async {
@@ -32,10 +28,10 @@ module Connection =
                 match msg with
                 | Command (write, rc) ->
                     write s 
-                    return rc.Reply (Parser.redisU s)
-                | Exit -> s.Dispose()
-                | _ -> failwith "unimplemented redis msg type"
-                return! loop s    }
+                    rc.Reply (Parser.redisU s)
+                    return! loop s
+                | Exit -> 
+                    s.Dispose() }
             loop (connect()))
             
         member this.PostAndAsyncReply f = agent.PostAndAsyncReply f
@@ -43,7 +39,6 @@ module Connection =
         interface IDisposable with
             member this.Dispose() =
                 agent.Post Exit
-                ()
 
 open Connection
 
