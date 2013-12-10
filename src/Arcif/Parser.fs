@@ -40,7 +40,7 @@ module Parser =
 
     let readBytes (st:Stream) n = 
         let buffer = Array.create<byte> n 0uy
-        st.Read (buffer, 0, n)
+        st.Read (buffer, 0, n) |> ignore
         buffer
 
     let private integerP i (st:OutState) =
@@ -90,6 +90,7 @@ module Parser =
     let private multiP (m:MultiReq) (st:OutState) =
         let (MultiReq (bulkList)) = m
         let count = bulkList.Length |> int64
+        printfn "%i" count
         byteP '*'B st
         integerP count st
         for bulk in bulkList do

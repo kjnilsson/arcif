@@ -19,6 +19,7 @@ module Connection =
 
         let connect() =
             let sock = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
+            sock.SetSocketOption (SocketOptionLevel.Tcp, SocketOptionName.NoDelay, 0)
             sock.Connect(ip, port)
             new BufferedStream(new NetworkStream (sock))
 
@@ -125,4 +126,4 @@ module Strings =
 
 module Redis =
     let connect (ip:string) (port:int32) =
-        new Connection.RedisAgent(ip, port)
+        new Connection.RedisAgent (ip, port)

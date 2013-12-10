@@ -22,25 +22,31 @@ let check test target value =
         |> function
             | Status x' -> x' |> asBytes = target
             | Reply.Bulk (Some x') ->  x' = target
+            | _ -> false
 
     if result then
         printfn  "test: %s is OK" test
     else
         printfn "!! test: %s failed !!" test
 
+
 [<EntryPoint>]
 let main args = 
     Console.WriteLine("Arcif Integration Tests")
     
     use r = Redis.connect "localhost" 6379
+
+    r.Set "name"B "karl-johan"B |> Async.RunSynchronously |> printfn "%A"
+   
+   
+    r.Get "name"B |> Async.RunSynchronously |> printfn "%A" 
+//    r.Select 5 |> check "Select 5" "OK"B
+//    r.FlushDb () |> check "FlushDb" "OK"B
+//    
+//    r.Set "k1"B "v1"B |> check "Set k1 to v1" "OK"B
+//    
+//    r.Get "k1"B |> check "Get k1" "v1"B
     
-    r.Select 5 |> check "Select 5" "OK"B
-    r.FlushDb () |> check "FlushDb" "OK"B
-    
-    r.Set "k1"B "v1"B |> check "Set k1 to v1" "OK"B
-    
-    r.Get "k1"B |> check "Get k1" "v1"B
-    
-    
+    Console.ReadLine () |> ignore 
     0
 
